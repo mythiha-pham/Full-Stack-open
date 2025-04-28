@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import personService from './services/persons'
 import Filter from './components/Filter'
 import PersonForm from './components/PersonForm'
 import Persons from './components/Persons'
@@ -11,8 +11,8 @@ const App = () => {
   const [filter, setFilter] = useState('')
 
   useEffect(() => {
-    axios
-      .get('http://localhost:3001/persons')
+    personService
+      .getAll()
       .then(response => {
         setPersons(response.data)
       })
@@ -23,13 +23,24 @@ const App = () => {
     const nameObject = {
       name: newName,
       number: newNumber,
-      id: persons.length + 1
+      id: Math.floor(Math.random() * 10000).toString()
     }
-    if (persons.some(person => person.name === newName)) {
-      alert(`${newName} is already added to phonebook`)
-      return
+    if (persons.some(person => person.name === newName) 
+      && window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)) {
+        const person = persons.find(p => p.name === newName)
+        const updatedPerson = { ...person, number: newNumber }
+        personService
+          .update(person.id, updatedPerson)
+          .then(response => {
+            setPersons(persons.map(p => (p.id !== person.id ? p : response.data)))
+          })
     }
-    setPersons(persons.concat(nameObject))
+
+    personService
+      .create(nameObject)
+      .then(response => {
+        setPersons(persons.concat(response.data))
+      })
   }
 
   const handleFilterChange = (event) => {
@@ -44,6 +55,17 @@ const App = () => {
     setNewNumber(event.target.value)
   }
 
+  const deletePerson = (id) => {
+    const person = persons.find(p => p.id === id)
+    if (window.confirm(`Delete ${person.name}?`)) {
+      personService
+        .remove(id)
+        .then(() => {
+          setPersons(persons.filter(p => p.id !== id))
+        })
+    }
+  }
+  
   return (
     <div>
       <h2>Phonebook</h2>
@@ -51,7 +73,7 @@ const App = () => {
       <h3>Add a new</h3>
       <PersonForm newName={newName} newNumber={newNumber} handleNameChange={handleNameChange} handleNumberChange={handleNumberChange} addPerson={addPerson} />
       <h3>Numbers</h3>
-      <Persons persons={persons} filter={filter} />
+      <Persons persons={persons} filter={filter} deletePerson={deletePerson} />
     </div>
   )
 }
