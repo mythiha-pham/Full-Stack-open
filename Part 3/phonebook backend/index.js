@@ -27,12 +27,14 @@ app.post('/api/persons', (request, response, next) => {
 
   const person = new Person({
     name: body.name,
-    number: body.number,
+    number: body.number
   })
 
   person.save()
-    .then(person => response.json(person.toJSON()))
-    .catch(error => next(error))
+  .then(person => {
+    response.json(person)
+  })
+  .catch(error => next(error))
 })
 
 morgan.token('body', (request) => {
@@ -81,11 +83,6 @@ app.delete('/api/persons/:id', (request, response, next) => {
 app.put('/api/persons/:id', (request, response, next) => {
   const body = request.body
 
-  const person = {
-    name: body.name,
-    number: body.number,
-  }
-
   Person.findById(request.params.id)
     .then(person => {
       if (!person) {
@@ -96,7 +93,7 @@ app.put('/api/persons/:id', (request, response, next) => {
       person.number = body.number
 
       return person.save().then(person => {
-        response.json(person.toJSON())
+        response.json(person)
       })
     })
     .catch(error => next(error))
@@ -107,7 +104,9 @@ const errorHandler = (error, request, response, next) => {
 
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'malformatted id' })
-  } 
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
+  }
   next(error)
 }
 app.use(errorHandler)
